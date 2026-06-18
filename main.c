@@ -7,19 +7,20 @@
 #include <pwd.h>
 #include <unistd.h>
 #include <errno.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
 char *cmd;
-char mData[256];
 char *args[128] = {};
 char *tok = "";
+char buffer[128] = "";
 
 void splitArgs(const char data[]){
     if ( strcmp(data, "") == 0 ) return;
     int counter = 0;
-    char buffer[128] = "";
     const char delimiters[] = " ";
-    strcpy(mData, data);
-    tok = strtok(mData, delimiters);
+    strcpy(buffer, data);
+    tok = strtok(buffer, delimiters);
     for(int i = 0; i < 128; i++){
         args[i] = NULL;
     }
@@ -47,10 +48,8 @@ bool runBuiltIn(const char *cmd){
         if ( args[1] != NULL )
             if (args[1][0] == '~'){
                 char buffer[256];
-                char *arg = args[1];
-                strncpy(arg, args[1] + 1, strlen(arg));
                 strcat(buffer, homedir);
-                strcat(buffer, arg);
+                strcat(buffer, args[1] + 1);
                 chdir(buffer);
             }
             else
@@ -63,8 +62,9 @@ bool runBuiltIn(const char *cmd){
         return false;
 }
 int main(){
-    char input[50] = "";
+    char *input;
     char wd[256];
+    char prompt[384] = "";
     struct passwd *pw = getpwuid(geteuid());
     const char* user = pw->pw_name;
     const char* homedir = pw->pw_dir;
@@ -79,24 +79,29 @@ int main(){
             }
             strcat(wd, buffer);
         }
-        printf("\033[1;33m[%s] %s\033[1;37m > \033[0m", user, wd);
-        fgets(input, sizeof(input), stdin);
-        input[strlen(input) - 1] = '\0';
-        if ( strcmp("", input) != 0 ){
-            splitArgs(input);
-            bool bRan = runBuiltIn(cmd);
-            if ( bRan ) continue;
-            pid_t pid = fork();
-            if ( pid == 0 ){
-                execvp(cmd, args);
-                if (errno == 2){
-                    printf("\033[1;31merror: \033[0;37mcommand not found -> %s\n", cmd);
-                    exit(127);
-                }
-            }
-            else {
-                wait(NULL);
+        snprintf(prompt, sizeof(prompt), "[ %s | %s ]$ ", user, wd);
+        input = readline(prompt);
+        if ( input == NULL )
+            break;
+        if ( input == "" )
+            continue;
+        if ( input != NULL )
+            add_history(input);
+        splitArgs(input);
+        bool bRan = runBuiltIn(cmd);
+        if ( bRan ) continue;
+        pid_t pid = fork();
+        if ( pid == 0 ){
+            execvp(cmd, args);
+            if (errno == 2){
+                printf("\033[1;31merror: \033[0;37mcommand not found -> %s\n", cmd);
+                exit(127);
             }
         }
+        else {
+            wait(NULL);
+        }
+        free(input);
+        memset(prompt, '\0',sizeof(prompt));
     }
 }
