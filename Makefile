@@ -1,13 +1,19 @@
 CC = gcc
 LDFLAGS = -lreadline
+PREFIX = /usr/local
 
 all: trash
 
-install: trash
-	install -v -m755 trash /usr/bin
-trash: main.o builtins.o
-	$(CC) $(LDFLAGS) -o trash main.o builtins.o
-main.o: main.c builtins.h
-	$(CC) $(LDFLAGS) -c main.c -o main.o
+trash: main.o builtins.o utils.o
+	$(CC) $(LDFLAGS) -o trash main.o builtins.o utils.o
+main.o: main.c builtins.h utils.h
+	$(CC) -c main.c -o main.o
 builtins.o: builtins.c builtins.h
-	$(CC) $(LDFLAGS) -c builtins.c -o builtins.o
+	$(CC) -c builtins.c -o builtins.o
+utils.o:
+	$(CC) -c utils.c -o utils.o
+
+clean:
+	rm -f *.o
+install: trash
+	install -v -m755 trash $(PREFIX)/bin

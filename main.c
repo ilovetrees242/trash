@@ -11,6 +11,7 @@
 #include <readline/history.h>
 
 #include "builtins.h"
+#include "utils.h"
 
 char *cmd;
 char *args[128] = {};
@@ -69,7 +70,7 @@ int main(){
         if ( pid == 0 ){
             execvp(cmd, args);
             if (errno == 2){
-                printf("\033[1;31merror: \033[0;37mcommand not found -> %s\n", cmd);
+                logErr("command not found");
                 exit(127);
             }
         }
@@ -77,6 +78,6 @@ int main(){
             wait(NULL);
         }
         free(input);
-        memset(prompt, '\0',sizeof(prompt));
+        memset(prompt, '\0', sizeof(prompt));
     }
 }

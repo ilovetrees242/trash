@@ -1,7 +1,11 @@
 #include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
 #include <pwd.h>
 #include <unistd.h>
 #include <string.h>
+
+#include "utils.h"
 
 bool runBuiltIn(const char *cmd, char *args[]){
     struct passwd *pw = getpwuid(geteuid());
@@ -24,8 +28,17 @@ bool runBuiltIn(const char *cmd, char *args[]){
                 strcat(buffer, args[1] + 1);
                 chdir(buffer);
             }
-            else
+            else {
                 chdir(args[1]);
+                switch(errno){
+                    case ENOENT:
+                        logErr("cd: no such file or directory");
+                        break;
+                    case EACCES:
+                        logErr("cd: permission denied");
+                        break;
+                }
+            }
         }
         else
             chdir(homedir);
